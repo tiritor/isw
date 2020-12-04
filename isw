@@ -453,6 +453,27 @@ def check_mod():
 	grep_proc.communicate()  # Block until finished
 	return grep_proc.returncode == 0
 
+def raw_print(value):
+	# Option -r, show realtime CPU+GPU temp and fan speed from EC
+	with open(CFG_FILE) as cfgfile:
+		cfgp = configparser.ConfigParser()
+		cfgp.read_file(cfgfile)
+		rcta = int(cfgp.get('MSI_ADDRESS_DEFAULT', 'realtime_cpu_temp_address'),16)
+		rcfsa = int(cfgp.get('MSI_ADDRESS_DEFAULT', 'realtime_cpu_fan_speed_address'),16)
+		rcfra = int(cfgp.get('MSI_ADDRESS_DEFAULT', 'realtime_cpu_fan_rpm_address'),16)
+		rgta = int(cfgp.get('MSI_ADDRESS_DEFAULT', 'realtime_gpu_temp_address'),16)
+		rgfsa = int(cfgp.get('MSI_ADDRESS_DEFAULT', 'realtime_gpu_fan_speed_address'),16)
+		rgfra = int(cfgp.get('MSI_ADDRESS_DEFAULT', 'realtime_gpu_fan_rpm_address'),16)
+		data = read_temp_fs_rpm(rcta, rcfsa, rcfra, rgta, rgfsa, rgfra)
+		print("CPU: %s, %s (%s); GPU: %s, %s (%s)" %(
+			str(data[0])+'°C',
+			str(data[2])+' RPM',
+			str(data[1])+' %',
+			str(data[3])+' °C',
+			str(data[5])+' RPM',
+			str(data[4])+' %',
+			))
+
 def main():
 	# ArgumentParser deal with option/argument handling
 	# 'type =' is used to launch a function, having an argument is mandatory
@@ -519,7 +540,9 @@ def main():
 	                           +Text.ULINED+'SECTION_NAME'+Text.CLEAR+'')
 	if len(sys.argv) == 1:
 		parser.print_help(sys.stderr)
-	parser.parse_args()
+	args = parser.parse_args()
+	if args.raw:
+		raw_print(0)
 
 if __name__ == '__main__':
 	if check_mod():
