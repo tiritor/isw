@@ -5,6 +5,7 @@ import sys
 import os
 import time
 import configparser
+import subprocess
 from argparse import ArgumentParser
 from argparse import Action
 from argparse import RawTextHelpFormatter
@@ -429,6 +430,29 @@ def single_write(address, value):
 		      hex(value)+'('+str(value)+')',
 		      hex(address)+'(byte'+str(address)+')'))
 
+def check_mod_bool_parameter(mod="ec_sys", param="write_support"):
+	if check_mod():
+		process = subprocess.Popen(['cat', '/sys/module/{:s}/parameters/{:s}}'.format(mod, param)], stdout=subprocess.PIPE)
+		process.communicate()
+		value = process.stdout.readline()
+		if value == "Y":
+			return True
+		elif value == "N":
+			return False
+		else:
+			print("Error: No boolean value!")
+			return False
+		
+	else:
+		print("Error: Mod {:s} is not loaded!".format(mod))
+
+def check_mod():
+	module_name = "ec_sys"
+	lsmod_proc = subprocess.Popen(['lsmod'], stdout=subprocess.PIPE)
+	grep_proc = subprocess.Popen(['grep', module_name], stdin=lsmod_proc.stdout, stdout=subprocess.DEVNULL)
+	grep_proc.communicate()  # Block until finished
+	return grep_proc.returncode == 0
+
 def main():
 	# ArgumentParser deal with option/argument handling
 	# 'type =' is used to launch a function, having an argument is mandatory
@@ -469,6 +493,8 @@ def main():
 	                    help = '┬ show realtime CPU+GPU temp and fan speed from EC\n'
 	                           '├ replace [R] with any [NUMBER] to perform a [NUMBER] of time(s)\n'
 	                           '└ Assume [0] if given nothing = infinite loop\n ')
+	parser.add_argument('-R', '--raw', action = "store_true", 
+	                    help = '- show raw realtime CPU+GPU temp and fan speed from EC\n')
 	parser.add_argument('-s', type = ec_set, nargs = 2,
 	                    help = '┬ set a single value into EC\n'
 	                           '├ replace 1st '+Text.ULINED+'S'+Text.CLEAR+' with '
@@ -496,4 +522,8 @@ def main():
 	parser.parse_args()
 
 if __name__ == '__main__':
-    main()
+	if check_mod():
+		main()
+	else:
+		print("Error: Mod {:s} not loaded.".format("ec_sys"))
+		exit(1)
